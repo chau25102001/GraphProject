@@ -1,3 +1,4 @@
 ./parsed
 *__pycache__
 .idea
+data/

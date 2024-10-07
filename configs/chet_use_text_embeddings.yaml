@@ -8,4 +8,3 @@ hidden_size: 150
 t_attention_size: 32
 batch_size: 32
 epochs: 200
-use_text_embeddings: true
