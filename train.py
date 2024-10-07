@@ -28,7 +28,7 @@ def seed_everything(seed):
 
 def main():
     parser = ArgumentParser("Training EHR")
-    parser.add_argument("--config", type=str, default="configs/chet.yaml")
+    parser.add_argument("--config", type=str, default="configs/chet_h.yaml")
     args = parser.parse_args()
 
     config = yaml.safe_load(open(args.config, "r"))
@@ -38,6 +38,7 @@ def main():
     dataset = config['dataset']
     task = config['task']
     use_cuda = config['use_cuda']
+    pretrained_embeddings_path = config.get('pretrained_embeddings_path', None)
     device = torch.device('cuda' if torch.cuda.is_available() and use_cuda else 'cpu')
 
     code_size = config['code_size']
@@ -47,13 +48,10 @@ def main():
     t_output_size = hidden_size
     batch_size = config['batch_size']
     epochs = config['epochs']
-    
-    # Use initialized text embeds or not
-    use_text_embeddings = config['use_text_embeddings']
 
     seed_everything(seed)
 
-    dataset_path = os.path.join('data', dataset, 'standard')
+    dataset_path = os.path.join('data', 'standard')
     train_path = os.path.join(dataset_path, 'train')
     valid_path = os.path.join(dataset_path, 'valid')
     test_path = os.path.join(dataset_path, 'test')
@@ -98,20 +96,23 @@ def main():
     evaluate_fn = task_conf[task]['evaluate_fn']
     dropout_rate = task_conf[task]['dropout']
 
-    param_path = os.path.join('data', 'params', dataset, task)
+    param_path = os.path.join(config['output_dir'], 'params', dataset, task)
     if not os.path.exists(param_path):
         os.makedirs(param_path)
 
     model = Model(code_num=code_num, code_size=code_size,
                   adj=code_adj, graph_size=graph_size, hidden_size=hidden_size, t_attention_size=t_attention_size,
                   t_output_size=t_output_size,
-                  output_size=output_size, dropout_rate=dropout_rate, activation=activation, use_text_embeddings=use_text_embeddings).to(device)
+                  output_size=output_size, dropout_rate=dropout_rate, activation=activation)
+    if pretrained_embeddings_path is not None:
+        model.embedding_layer.init_weights(pretrained_embeddings_path)
+    model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=task_conf[task]['lr']['init_lr'])
     scheduler = MultiStepLRScheduler(optimizer, epochs, task_conf[task]['lr']['init_lr'],
                                      task_conf[task]['lr']['milestones'], task_conf[task]['lr']['lrs'])
     pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(pytorch_total_params)
-
+    best_loss = 1e9
     for epoch in range(epochs):
         model.train()
         total_loss = 0
@@ -138,13 +139,15 @@ def main():
         time_cost = format_time(et - st)
         print('\r    Step %d / %d, time cost: %s, loss: %.4f' % (steps, steps, time_cost, total_loss / total_num))
         valid_loss, f1_score = evaluate_fn(model, valid_data, loss_fn, output_size, test_historical)
-        print(f"valid loss: {valid_loss}, f1_score: {f1_score}")
-        torch.save(model.state_dict(), os.path.join(param_path, '%d.pt' % epoch))
+        if valid_loss < best_loss:
+            best_loss = valid_loss
+            torch.save(model.state_dict(), os.path.join(param_path, 'best.pt'))
+        torch.save(model.state_dict(), os.path.join(param_path, 'last.pt'))
 
+    model.load_state_dict(torch.load(os.path.join(param_path, 'best.pt'))) # load best checkpoint
     test_loss, f1_score = evaluate_fn(model, test_data, loss_fn, output_size,
                                       historical_hot(test_data.code_x, code_num, test_data.visit_lens))
 
-    print(f"test loss: {test_loss}, f1_score: {f1_score}")
 
 if __name__ == "__main__":
     main()
