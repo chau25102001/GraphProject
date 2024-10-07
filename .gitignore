@@ -1,4 +1,9 @@
 ./parsed
 *__pycache__
 .idea
-data/
+*.emb
+*.model
+*.pt
+nhap.py
+load.py
+*.txt

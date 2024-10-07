@@ -1,0 +1,13 @@
+seed: 6669
+dataset: mimic3
+task: m
+use_cuda: true
+code_size: 48
+graph_size: 32
+hidden_size: 256
+t_attention_size: 32
+batch_size: 32
+epochs: 200
+output_dir: "./runs/chet" # output directory for saving checkpoints
+pretrained_embeddings_path: None
+freeze_embeddings: false

@@ -16,11 +16,11 @@ MODEL_NAME= "ncbi/MedCPT-Query-Encoder"
 model = AutoModel.from_pretrained(MODEL_NAME)
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 
-OUPUT_SIZE = 32
+OUTPUT_SIZE = 32
 
-icd_names = pd.read_csv('data/mimic3/raw/D_ICD_DIAGNOSES.csv.gz')
+icd_names = pd.read_csv('../data/mimic3/raw/D_ICD_DIAGNOSES.csv.gz')
 icd_names = icd_names[['ICD9_CODE','LONG_TITLE']]
-add_icd_names = pd.read_csv('./data/add_icd.csv')
+add_icd_names = pd.read_csv('../data/add_icd.csv')
 icd_names = pd.concat([icd_names,add_icd_names],ignore_index=True)
 # print(icd_names)
 
@@ -66,13 +66,13 @@ for code in tqdm(code_name_mapping):
 
     embedding_mapping[code] = {'title':code_title, 'embedding':embedding}
 
-with open('data/icd_embeddings.pickle', 'wb') as handle:
+with open('../data/icd_embeddings.pickle', 'wb') as handle:
     pickle.dump(embedding_mapping, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-with open('data/icd_embeddings.pickle', 'rb') as handle:
+with open('../data/icd_embeddings.pickle', 'rb') as handle:
     embedding_mapping = pickle.load(handle)
 
-with open('data/mimic3/encoded/code_map.pkl', 'rb') as f:
+with open('../data/mimic3/encoded/code_map.pkl', 'rb') as f:
     code_map = pickle.load(f)
     print(code_map)
 
@@ -95,4 +95,4 @@ transformed_mimic3 = reducer.fit_transform(mimic3_embeddings_final)
 scaler = MinMaxScaler((-1,1))
 mimic3_embeddings = scaler.fit_transform(transformed_mimic3)
 
-np.save('data/mimic3/umap_embeddings.npy', mimic3_embeddings)    # .npy extension is added if not given
+torch.save(torch.from_numpy(mimic3_embeddings), 'umap_embeddings.pt')    # .npy extension is added if not given
