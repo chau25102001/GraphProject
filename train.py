@@ -39,6 +39,7 @@ def main():
     task = config['task']
     use_cuda = config['use_cuda']
     pretrained_embeddings_path = config.get('pretrained_embeddings_path', None)
+    freeze_embedding = config.get('freeze_embedding', False)
     device = torch.device('cuda' if torch.cuda.is_available() and use_cuda else 'cpu')
 
     code_size = config['code_size']
@@ -105,7 +106,7 @@ def main():
                   t_output_size=t_output_size,
                   output_size=output_size, dropout_rate=dropout_rate, activation=activation)
     if pretrained_embeddings_path is not None:
-        model.embedding_layer.init_weights(pretrained_embeddings_path)
+        model.embedding_layer.init_weights(pretrained_embeddings_path, freeze=freeze_embedding)
     model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=task_conf[task]['lr']['init_lr'])
     scheduler = MultiStepLRScheduler(optimizer, epochs, task_conf[task]['lr']['init_lr'],

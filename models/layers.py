@@ -16,27 +16,20 @@ class EmbeddingLayer(nn.Module):
         self.c_embeddings = nn.Parameter(data=nn.init.xavier_uniform_(torch.empty(code_num, code_size)))
         self.n_embeddings = nn.Parameter(data=nn.init.xavier_uniform_(torch.empty(code_num, code_size)))
         self.u_embeddings = nn.Parameter(data=nn.init.xavier_uniform_(torch.empty(code_num, graph_size)))
-        
-        # Load text embeddings
-        if use_text_embedding:
-            bert_embeddings = torch.from_numpy(np.load('data/mimic3/umap_embeddings.npy')).to(device)
-            self.bert_embeddings = nn.Parameter(data=bert_embeddings).to(device)
-            self.register_parameter("bert_embeddings", self.bert_embeddings)
-
-        self.c_embeddings.data = bert_embeddings
-        self.c_embeddings.requires_grad = False
-        self.n_embeddings.data = bert_embeddings
-        self.n_embeddings.requires_grad = False
-        self.u_embeddings.data = bert_embeddings
-        self.u_embeddings.requires_grad = False
 
 
-    def init_weights(self, ckpt_path, modules=['c_embeddings', 'n_embeddings', 'u_embeddings']):
+    def init_weights(self, ckpt_path, modules=['c_embeddings', 'n_embeddings', 'u_embeddings'], freeze=False):
         mapping = {'c_embeddings': self.c_embeddings, 'n_embeddings': self.n_embeddings, 'u_embeddings': self.u_embeddings}
         ckpt = torch.load(ckpt_path)
         for module in modules:
             print(f"Loading {module} from {ckpt_path}")
             mapping[module].data = ckpt
+
+        if freeze: # freeze the embeddings
+            self.c_embeddings.requires_grad = False
+            self.n_embeddings.requires_grad = False
+            self.u_embeddings.requires_grad = False
+
 
     def forward(self):
         return self.c_embeddings, self.n_embeddings, self.u_embeddings

@@ -1,0 +1,13 @@
+seed: 6669
+dataset: mimic3
+task: h
+use_cuda: true
+code_size: 48
+graph_size: 32
+hidden_size: 100
+t_attention_size: 32
+batch_size: 32
+epochs: 200
+output_dir: "./runs/chet_text_embeddings" # output directory for saving checkpoints
+pretrained_embeddings_path: pretraining/umap_embeddings.pt
+freeze_embeddings: true

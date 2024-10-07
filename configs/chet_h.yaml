@@ -8,4 +8,6 @@ hidden_size: 100
 t_attention_size: 32
 batch_size: 32
 epochs: 200
-output_dir: "./runs/" # output directory for saving checkpoints
+output_dir: "./runs/chet" # output directory for saving checkpoints
+pretrained_embeddings_path: None
+freeze_embeddings: false

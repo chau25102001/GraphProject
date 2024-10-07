@@ -7,15 +7,13 @@ from dataset.dataset import load_adj
 from node2vec import Node2Vec
 from argparse import ArgumentParser
 import yaml
+import torch
 
 def main():
     parser = ArgumentParser("Training Node2Vec")
     parser.add_argument("--config", type=str, default="configs/chet_h.yaml")
     args = parser.parse_args()
 
-    save_root = "./pretrained_weights"
-    if not os.path.exists(save_root):
-        os.makedirs(save_root)
     EMBEDDING_FILENAME = 'embeddings.emb'
     EMBEDDING_MODEL_FILENAME = 'embeddings.model'
 
@@ -29,6 +27,15 @@ def main():
     model.wv.save_word2vec_format(EMBEDDING_FILENAME)
     print("Node2Vec model saved to", EMBEDDING_FILENAME)
     model.save(EMBEDDING_MODEL_FILENAME)
+
+    saved_embeddings = []
+    with open(EMBEDDING_FILENAME) as f:
+        f = f.readlines()
+        for line in f[1:]:
+            line = line.strip().split()
+            saved_embeddings.append(list(map(float, line[1:])))
+    saved_embeddings = torch.tensor(saved_embeddings, dtype=torch.float32)
+    torch.save(saved_embeddings, os.path.join('embeddings_node2vec.pt'))
 
 if __name__ == "__main__":
     main()
