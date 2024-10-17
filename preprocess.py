@@ -76,12 +76,12 @@ print(termcolor.colored('train num: %d' % len(train_pids), 'blue'))
 print(termcolor.colored('valid num: %d' % len(valid_pids), 'blue'))
 print(termcolor.colored('test num: %d' % len(test_pids), 'blue'))
 
-code_adj = generate_code_code_adjacent(pids=train_pids,
+code_adj, sim_matrix = generate_code_code_adjacent(pids=train_pids,
                                        patient_admission=patient_admission,
                                        admission_codes_encoded=admission_codes_encoded,
                                        code_num=code_num,
-                                       threshold=conf['threshold'])
-
+                                       threshold=conf['threshold'], return_sim = True)
+print(sim_matrix)
 common_args = [patient_admission, admission_codes_encoded, max_admission_num, code_num]
 print(termcolor.colored('building train codes features and labels ...', 'blue'))
 train_code_x, train_codes_y, train_visit_lens = build_code_xy(train_pids, *common_args)
@@ -146,4 +146,9 @@ print(termcolor.colored('saving test data', 'green'))
 save_data(test_path, test_code_x, test_visit_lens, test_codes_y, test_hf_y, test_divided, test_neighbors)
 
 code_adj = normalize_adj(code_adj)  # normalized by node degree
+sim_matrix = normalize_adj(sim_matrix)
+print('code_adj ', code_adj)
+print('sim_matrix', sim_matrix)
 save_sparse(os.path.join(standard_path, 'code_adj'), code_adj)
+save_sparse(os.path.join(standard_path, 'sim_adj'), sim_matrix)
+

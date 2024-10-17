@@ -5,7 +5,7 @@ from models.utils import SingleHeadAttentionLayer
 
 
 class EmbeddingLayer(nn.Module):
-    def __init__(self, code_num, code_size, graph_size, use_tex_embeddings = False):
+    def __init__(self, code_num, code_size, graph_size, use_text_embeddings = True, text_emb_size = 1024, ckpt_path = 'pretraining/bge_embeddings.pt', freeze=True):
         """
         :param code_num: number of diseases
         :param code_size: size of disease code embeddings
@@ -13,25 +13,46 @@ class EmbeddingLayer(nn.Module):
         """
         super().__init__()
         self.code_num = code_num
-        self.c_embeddings = nn.Parameter(data=nn.init.xavier_uniform_(torch.empty(code_num, code_size)))
-        self.n_embeddings = nn.Parameter(data=nn.init.xavier_uniform_(torch.empty(code_num, code_size)))
+        
+        self.code_text = nn.Parameter(data=nn.init.xavier_uniform_(torch.empty(code_num, text_emb_size)))
+
         self.u_embeddings = nn.Parameter(data=nn.init.xavier_uniform_(torch.empty(code_num, graph_size)))
 
+        self.c_embeddings = nn.Parameter(data=nn.init.xavier_uniform_(torch.empty(code_num, code_size)))
+        self.n_embeddings = nn.Parameter(data=nn.init.xavier_uniform_(torch.empty(code_num, code_size)))
+        
+        self.use_text_embeddings = use_text_embeddings
+        if use_text_embeddings:
+            self.init_weights(ckpt_path = ckpt_path, freeze = freeze)
+            self.c_fc = nn.Sequential(nn.Linear(text_emb_size, code_size), nn.LeakyReLU(0.1), nn.Linear(code_size, code_size))
+            self.n_fc = nn.Sequential(nn.Linear(text_emb_size, code_size), nn.LeakyReLU(0.1), nn.Linear(code_size, code_size))
+        
 
-    def init_weights(self, ckpt_path, modules=['c_embeddings', 'n_embeddings', 'u_embeddings'], freeze=False):
-        mapping = {'c_embeddings': self.c_embeddings, 'n_embeddings': self.n_embeddings, 'u_embeddings': self.u_embeddings}
+    def init_weights(self, ckpt_path, modules=['code_text'], freeze=False):
+        # mapping = {'c_embeddings': self.c_embeddings, 'n_embeddings': self.n_embeddings, 'u_embeddings': self.u_embeddings}
+        
+        # mapping = {'c_embeddings': self.c_embeddings, 'n_embeddings': self.n_embeddings}
+        mapping = {'code_text': self.code_text}
         ckpt = torch.load(ckpt_path)
+        print('ckpt', ckpt.shape)
         for module in modules:
             print(f"Loading {module} from {ckpt_path}")
             mapping[module].data = ckpt
 
         if freeze: # freeze the embeddings
-            self.c_embeddings.requires_grad = False
-            self.n_embeddings.requires_grad = False
-            self.u_embeddings.requires_grad = False
-
+            print('Freezed')
+            # self.c_embeddings.requires_grad_(False) 
+            # self.n_embeddings.requires_grad_(False)
+            # self.u_embeddings.requires_grad = False
+            self.code_text.requires_grad_(False) 
+            # self.n_text.requires_grad_(False)
+        # print(code_text.data.shape)
 
     def forward(self):
+        if self.use_text_embeddings:
+            self.c_embeddings = self.c_fc(self.code_text)
+            self.n_embeddings = self.n_fc(self.code_text)
+
         return self.c_embeddings, self.n_embeddings, self.u_embeddings
 
 
@@ -65,7 +86,7 @@ class GraphLayer(nn.Module):
                                                     neighbor_embeddings)  # sum of undiagnosed neighbor nodes' embeddings code_num x code_size
         nn_embeddings = neighbor_codes * torch.matmul(self.adj, neighbor_embeddings)
         nc_embeddings = neighbor_codes * torch.matmul(self.adj, center_embeddings)
-
+        # print(center_embeddings.shape, cc_embeddings.shape, cn_embeddings.shape)
         co_embeddings = self.activation(self.dense(center_embeddings + cc_embeddings + cn_embeddings))
         no_embeddings = self.activation(self.dense(neighbor_embeddings + nn_embeddings + nc_embeddings))
         return co_embeddings, no_embeddings  # code_num x graph_size, code_num x graph_size
