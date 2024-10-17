@@ -3,7 +3,7 @@ import numpy as np
 import re
 
 class MultiStepLRScheduler:
-    def __init__(self, optimizer, epochs, init_lr, milestones, lrs):
+    def __init__(self, optimizer: object, epochs: object, init_lr: object, milestones: object, lrs: object) -> object:
         self.optimizer = optimizer
         self.epochs = epochs
         self.init_lr = init_lr

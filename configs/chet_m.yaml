@@ -6,9 +6,21 @@ code_size: 48
 graph_size: 32
 hidden_size: 256
 t_attention_size: 32
-batch_size: 32
-epochs: 200
-output_dir: "./runs/chet_fusion" # output directory for saving checkpoints
 pretrained_embeddings_path: null
 freeze_embeddings: false
-graph_layer_type: fusion
+graph_layer_type: gcn
+dropout: 0.45
+
+# train config
+batch_size: 32
+epochs: 200
+output_dir: "./runs/chet" # output directory for saving checkpoints
+lr: 0.01
+milestones:
+  - 20
+  - 20
+lrs:
+  - 0.001
+  - 0.00001
+
+lr_scheduler: "multi_step"

@@ -6,8 +6,17 @@ code_size: 48
 graph_size: 32
 hidden_size: 256
 t_attention_size: 32
-batch_size: 32
-epochs: 15
-output_dir: "./runs/chet_text_embeddings_m" # output directory for saving checkpoints
 pretrained_embeddings_path: pretraining/bge_embeddings.pt
 freeze_embeddings: true
+load_modules:
+  - code_text
+graph_layer_type: gcn
+use_text_embeddings: true # do not set to false
+text_emb_size: 1024
+
+# train config
+batch_size: 32
+epochs: 100
+output_dir: "./runs/chet_text_embeddings" # output directory for saving checkpoints
+lr: 0.0005
+lr_scheduler: "cosine"

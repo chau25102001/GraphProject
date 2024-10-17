@@ -113,7 +113,6 @@ def evaluate_hf(model, dataset, loss_fn, output_size=1, historical=None):
         # print(output.shape, y.shape)
         if len(output.shape) == 0:
             output = torch.unsqueeze(output, 0)
-        print(output.shape, y.shape)
 
         loss = loss_fn(output, y)
         total_loss += loss.item() * output_size * len(code_x)

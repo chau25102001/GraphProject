@@ -1,11 +1,11 @@
 import torch
 import torch.nn as nn
 
-from models.utils import SingleHeadAttentionLayer
+from models.utils import SingleHeadAttentionLayer, MultiHeadAttentionLayer
 
 
 class EmbeddingLayer(nn.Module):
-    def __init__(self, code_num, code_size, graph_size, use_text_embeddings = True, text_emb_size = 1024, ckpt_path = 'pretraining/bge_embeddings.pt', freeze=True):
+    def __init__(self, code_num, code_size, graph_size, use_text_embeddings = True, text_emb_size = 1024):
         """
         :param code_num: number of diseases
         :param code_size: size of disease code embeddings
@@ -14,38 +14,32 @@ class EmbeddingLayer(nn.Module):
         super().__init__()
         self.code_num = code_num
 
-        self.code_text = nn.Parameter(data=nn.init.xavier_uniform_(torch.empty(code_num, text_emb_size)))
-
         self.u_embeddings = nn.Parameter(data=nn.init.xavier_uniform_(torch.empty(code_num, graph_size)))
 
         self.c_embeddings = nn.Parameter(data=nn.init.xavier_uniform_(torch.empty(code_num, code_size)))
         self.n_embeddings = nn.Parameter(data=nn.init.xavier_uniform_(torch.empty(code_num, code_size)))
 
         self.use_text_embeddings = use_text_embeddings
+        self.code_text = None
         if use_text_embeddings:
-            self.init_weights(ckpt_path = ckpt_path, freeze = freeze)
+            self.code_text = nn.Parameter(data=nn.init.xavier_uniform_(torch.empty(code_num, text_emb_size)))
             self.c_fc = nn.Sequential(nn.Linear(text_emb_size, code_size), nn.LeakyReLU(0.1), nn.Linear(code_size, code_size))
             self.n_fc = nn.Sequential(nn.Linear(text_emb_size, code_size), nn.LeakyReLU(0.1), nn.Linear(code_size, code_size))
 
 
     def init_weights(self, ckpt_path, modules=['code_text'], freeze=False):
-        # mapping = {'c_embeddings': self.c_embeddings, 'n_embeddings': self.n_embeddings, 'u_embeddings': self.u_embeddings}
 
-        # mapping = {'c_embeddings': self.c_embeddings, 'n_embeddings': self.n_embeddings}
-        mapping = {'code_text': self.code_text}
+        mapping = {'c_embeddings': self.c_embeddings, 'n_embeddings': self.n_embeddings, 'code_text': self.code_text}
         ckpt = torch.load(ckpt_path)
         for module in modules:
-            print(f"Loading {module} from {ckpt_path}")
-            mapping[module].data = ckpt
+            if hasattr(mapping[module], 'data'):
+                print(f"Loading {module} from {ckpt_path}")
+                mapping[module].data = ckpt
 
-        if freeze: # freeze the embeddings
-            print('Freezed')
-            # self.c_embeddings.requires_grad_(False)
-            # self.n_embeddings.requires_grad_(False)
-            # self.u_embeddings.requires_grad = False
-            self.code_text.requires_grad_(False)
-            # self.n_text.requires_grad_(False)
-        # print(code_text.data.shape)
+            if freeze: # freeze the embeddings
+                if hasattr(mapping[module], 'requires_grad_'):
+                    print('Freezed')
+                    mapping[module].requires_grad_(False)
 
     def forward(self):
         if self.use_text_embeddings:
@@ -357,8 +351,6 @@ class TransitionNoteAttentionLayer(nn.Module):
         super().__init__()
         self.gru = nn.GRUCell(input_size=graph_size, hidden_size=hidden_size)
         self.single_head_attention = SingleHeadAttentionLayer(graph_size, graph_size, t_output_size, t_attention_size)
-        # self.note_attention_layer = AttentionLayer(note_size, hidden_size, hidden_size, n_attention_size, output_size=hidden_size,
-        #                                                      )
         self.note_attention_layer = MultiHeadAttentionLayer(note_size, hidden_size, hidden_size, n_attention_size,
                                                             output_size=hidden_size, num_heads=n_attention_heads)
         self.activation = nn.Tanh()

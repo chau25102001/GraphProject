@@ -22,7 +22,7 @@ class Classifier(nn.Module):
 
 class Model(nn.Module):
     def __init__(self, code_num, code_size, adj, graph_size, hidden_size, t_attention_size, t_output_size, output_size,
-                 dropout_rate, activation, graph_layer_type='gat'):
+                 dropout_rate, activation, graph_layer_type='gat', use_text_embeddings=False, text_emb_size=1024):
         """
         :param code_num: number of diseases
         :param code_size: size of disease code embeddings
@@ -33,10 +33,14 @@ class Model(nn.Module):
         :param t_output_size: size of output in transition layer
         :param output_size: size of output
         :param dropout_rate: dropout rate
+        :param activation: activation function
+        :param graph_layer_type: type of graph layer, 'gcn' or 'gat' or 'fusion'
+        :param use_text_embeddings: whether to use text embeddings
+        :param text_emb_size: size of text embeddings
         """
         super().__init__()
 
-        self.embedding_layer = EmbeddingLayer(code_num, code_size, graph_size)
+        self.embedding_layer = EmbeddingLayer(code_num, code_size, graph_size, use_text_embeddings=use_text_embeddings, text_emb_size=text_emb_size)
         if graph_layer_type == "gcn":
             self.graph_layer = GraphLayer(adj, code_size, graph_size)
         elif graph_layer_type == 'gat':

@@ -3,7 +3,6 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from onnxruntime.transformers.models.gpt2.gpt2_parity import score
 
 
 class SingleHeadAttentionLayer(nn.Module):
