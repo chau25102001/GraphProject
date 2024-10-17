@@ -7,3 +7,7 @@
 nhap.py
 load.py
 *.txt
+*.log
+*.ipynb_checkpoints*
+runs/
+data/

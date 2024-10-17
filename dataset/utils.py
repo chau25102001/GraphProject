@@ -6,7 +6,7 @@ import termcolor
 from tqdm import tqdm
 
 from dataset.parsers import EHRParser
-
+import torch
 
 def encode_code(patient_admission: dict, admission_codes: dict):
     """
@@ -157,7 +157,7 @@ def normalize_adj(adj):
     return result
 
 
-def generate_code_code_adjacent(pids, patient_admission, admission_codes_encoded, code_num, threshold=0.01):
+def generate_code_code_adjacent(pids, patient_admission, admission_codes_encoded, code_num, threshold=0.01, return_sim = False):
     """
     This function generates the adjacent matrix of disease codes, 2 diseases are neighbor if they appear together in at least one admission
     :param pids: list of patient IDs
@@ -185,6 +185,14 @@ def generate_code_code_adjacent(pids, patient_admission, admission_codes_encoded
     a = norm_adj < threshold
     b = adj.sum(axis=-1, keepdims=True) > (1 / threshold)
     adj[np.logical_and(a, b)] = 0  # mask infrequent neighboring diseases
+    
+    sim_matrix = torch.load('./pretraining/similarity_matrix.pt').detach().cpu().numpy()
+    # sim_matrix = normalize_adj(sim_matrix)
+    sim_matrix[np.logical_and(a, b)] = 0
+    sim_matrix = normalize_adj(sim_matrix)
+
+    if return_sim:
+        return adj, sim_matrix
     return adj
 
 

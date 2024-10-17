@@ -79,6 +79,11 @@ def evaluate_hf(model, dataset, loss_fn, output_size=1, historical=None):
     for step in range(len(dataset)):
         code_x, visit_lens, divided, y, neighbors = dataset[step]
         output = model(code_x, divided, neighbors, visit_lens).squeeze()
+        # print(output.shape, y.shape)
+        if len(output.shape) == 0:
+            output = torch.unsqueeze(output, 0)
+        print(output.shape, y.shape)
+
         loss = loss_fn(output, y)
         total_loss += loss.item() * output_size * len(code_x)
         output = output.detach().cpu().numpy()
@@ -92,4 +97,4 @@ def evaluate_hf(model, dataset, loss_fn, output_size=1, historical=None):
     auc = roc_auc_score(labels, outputs)
     f1_score_ = f1_score(labels, preds)
     print('\r    Evaluation: loss: %.4f --- auc: %.4f --- f1_score: %.4f' % (avg_loss, auc, f1_score_))
-    return avg_loss, f1_score_
+    return avg_loss, f1_score_, auc
