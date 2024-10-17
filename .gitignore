@@ -11,3 +11,5 @@ load.py
 *.ipynb_checkpoints*
 runs/
 data/
+train_note_attention.py
+.idea

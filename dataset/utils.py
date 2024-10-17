@@ -210,16 +210,21 @@ def build_code_xy(pids, patient_admission, admission_codes_encoded, max_admissio
     x = np.zeros((n, max_admission_num, code_num), dtype=bool)  # patient, admission, code
     y = np.zeros((n, code_num), dtype=int)  # patient, code
     lens = np.zeros((n,), dtype=int)
+    notes = []
     for i, pid in tqdm(enumerate(pids), total=len(pids), desc="Building features and labels"):
         admissions = patient_admission[pid]
+        admission_notes = []
         for k, admission in enumerate(admissions[:-1]):
             codes = admission_codes_encoded[
                 admission[EHRParser.adm_id_col]]  # list of encoded disease codes of an admission
             x[i, k, codes] = 1
+            note = admission[EHRParser.note_col]
+            admission_notes.append(note)
         codes = np.array(admission_codes_encoded[admissions[-1][EHRParser.adm_id_col]])
         y[i, codes] = 1  # last admission diseases as label
         lens[i] = len(admissions) - 1
-    return x, y, lens
+        notes.append(admission_notes)
+    return x, y, lens, notes
 
 
 def generate_neighbors(code_x, lens, adj):
@@ -298,13 +303,16 @@ def save_sparse(path, x):
     values = x[idx]
     np.savez(path, idx=idx, values=values, shape=x.shape)
 
-def save_data(path, code_x, visit_lens, codes_y, hf_y, divided, neighbors):
+def save_data(path, code_x, visit_lens, codes_y, hf_y, divided, neighbors, notes):
     save_sparse(os.path.join(path, 'code_x'), code_x)
     np.savez(os.path.join(path, 'visit_lens'), lens=visit_lens)
     save_sparse(os.path.join(path, 'code_y'), codes_y)
     np.savez(os.path.join(path, 'hf_y'), hf_y=hf_y)
     save_sparse(os.path.join(path, 'divided'), divided)
     save_sparse(os.path.join(path, 'neighbors'), neighbors)
+    with open(os.path.join(path, 'notes.txt'), 'w', encoding='utf-8') as f:
+        for note in notes:
+            f.write(str(note) + '\n')
 
 def load_sparse(path):
     data = np.load(path)

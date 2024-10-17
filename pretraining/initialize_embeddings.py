@@ -1,7 +1,6 @@
 import transformers
 import pandas as pd
 from transformers import AutoTokenizer, AutoModel
-from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
 import pickle
 import torch

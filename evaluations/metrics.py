@@ -62,8 +62,39 @@ def evaluate_codes(model, dataset, loss_fn, output_size, historical=None):
     prec, recall = top_k_prec_recall(labels, preds, ks=[10, 20, 30, 40])
     if historical is not None:
         r1, r2 = calculate_occurred(historical, labels, preds, ks=[10, 20, 30, 40])
-        print('\r    Evaluation: loss: %.4f --- f1_score: %.4f --- top_k_recall: %.4f, %.4f, %.4f, %.4f  --- occurred: %.4f, %.4f, %.4f, %.4f  --- not occurred: %.4f, %.4f, %.4f, %.4f'
-              % (avg_loss, f1_score, recall[0], recall[1], recall[2], recall[3], r1[0], r1[1], r1[2], r1[3], r2[0], r2[1], r2[2], r2[3]))
+        print(
+            '\r    Evaluation: loss: %.4f --- f1_score: %.4f --- top_k_recall: %.4f, %.4f, %.4f, %.4f  --- occurred: %.4f, %.4f, %.4f, %.4f  --- not occurred: %.4f, %.4f, %.4f, %.4f'
+            % (avg_loss, f1_score, recall[0], recall[1], recall[2], recall[3], r1[0], r1[1], r1[2], r1[3], r2[0], r2[1],
+               r2[2], r2[3]))
+    else:
+        print('\r    Evaluation: loss: %.4f --- f1_score: %.4f --- top_k_recall: %.4f, %.4f, %.4f, %.4f'
+              % (avg_loss, f1_score, recall[0], recall[1], recall[2], recall[3]))
+    return avg_loss, f1_score
+
+
+def evaluate_codes_notes(model, dataset, loss_fn, output_size, historical=None):
+    model.eval()
+    total_loss = 0.0
+    labels = dataset.label()
+    preds = []
+    for step in range(len(dataset)):
+        code_x, visit_lens, divided, y, neighbors, note_embeddings, attention_masks = dataset[step]
+        output = model(code_x, divided, neighbors, visit_lens, note_embeddings, attention_masks) # batch x num_codes
+        pred = torch.argsort(output, dim=-1, descending=True)
+        preds.append(pred)
+        loss = loss_fn(output, y)
+        total_loss += loss.item() * output_size * len(code_x)
+        print('\r    Evaluating step %d / %d' % (step + 1, len(dataset)), end='')
+    avg_loss = total_loss / dataset.size()
+    preds = torch.vstack(preds).detach().cpu().numpy()
+    f1_score = f1(labels, preds)
+    prec, recall = top_k_prec_recall(labels, preds, ks=[10, 20, 30, 40])
+    if historical is not None:
+        r1, r2 = calculate_occurred(historical, labels, preds, ks=[10, 20, 30, 40])
+        print(
+            '\r    Evaluation: loss: %.4f --- f1_score: %.4f --- top_k_recall: %.4f, %.4f, %.4f, %.4f  --- occurred: %.4f, %.4f, %.4f, %.4f  --- not occurred: %.4f, %.4f, %.4f, %.4f'
+            % (avg_loss, f1_score, recall[0], recall[1], recall[2], recall[3], r1[0], r1[1], r1[2], r1[3], r2[0], r2[1],
+               r2[2], r2[3]))
     else:
         print('\r    Evaluation: loss: %.4f --- f1_score: %.4f --- top_k_recall: %.4f, %.4f, %.4f, %.4f'
               % (avg_loss, f1_score, recall[0], recall[1], recall[2], recall[3]))
@@ -82,7 +113,6 @@ def evaluate_hf(model, dataset, loss_fn, output_size=1, historical=None):
         # print(output.shape, y.shape)
         if len(output.shape) == 0:
             output = torch.unsqueeze(output, 0)
-        print(output.shape, y.shape)
 
         loss = loss_fn(output, y)
         total_loss += loss.item() * output_size * len(code_x)
@@ -97,4 +127,29 @@ def evaluate_hf(model, dataset, loss_fn, output_size=1, historical=None):
     auc = roc_auc_score(labels, outputs)
     f1_score_ = f1_score(labels, preds)
     print('\r    Evaluation: loss: %.4f --- auc: %.4f --- f1_score: %.4f' % (avg_loss, auc, f1_score_))
-    return avg_loss, f1_score_, auc
+    return avg_loss, f1_score_
+
+
+def evaluate_hf_notes(model, dataset, loss_fn, output_size=1, historical=None):
+    model.eval()
+    total_loss = 0.0
+    labels = dataset.label()
+    outputs = []
+    preds = []
+    for step in range(len(dataset)):
+        code_x, visit_lens, divided, y, neighbors, note_embeddings, attention_masks = dataset[step]
+        output = model(code_x, divided, neighbors, visit_lens, note_embeddings, attention_masks).squeeze()
+        loss = loss_fn(output, y)
+        total_loss += loss.item() * output_size * len(code_x)
+        output = output.detach().cpu().numpy()
+        outputs.append(output)
+        pred = (output > 0.5).astype(int)
+        preds.append(pred)
+        print('\r    Evaluating step %d / %d' % (step + 1, len(dataset)), end='')
+    avg_loss = total_loss / dataset.size()
+    outputs = np.concatenate(outputs)
+    preds = np.concatenate(preds)
+    auc = roc_auc_score(labels, outputs)
+    f1_score_ = f1_score(labels, preds)
+    print('\r    Evaluation: loss: %.4f --- auc: %.4f --- f1_score: %.4f' % (avg_loss, auc, f1_score_))
+    return avg_loss, f1_score_

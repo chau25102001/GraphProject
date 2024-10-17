@@ -15,12 +15,7 @@ for code in tqdm(code_map):
     # try:
     embedding = embedding_mapping[code]['embedding']
     embedding = embedding[0]
-    # print(embedding.shape)
     mimic3_embeddings.append(embedding)
-    # except:
-    #     # print(code)
-    #     raw_code = code.replace('.','')
-    #     print(raw_code)
 mimic3_embeddings_final = np.stack(mimic3_embeddings,axis=0)
 print(mimic3_embeddings_final.shape)
 torch.save(torch.from_numpy(mimic3_embeddings_final), 'pretraining/bge_embeddings.pt')    # .npy extension is added if not given
