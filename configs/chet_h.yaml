@@ -7,7 +7,8 @@ graph_size: 32
 hidden_size: 100
 t_attention_size: 32
 batch_size: 32
-epochs: 200
-output_dir: "./runs/chet" # output directory for saving checkpoints
-pretrained_embeddings_path: None
+epochs: 100
+output_dir: "./runs/chet_fusion" # output directory for saving checkpoints
+pretrained_embeddings_path: null
 freeze_embeddings: false
+graph_layer_type: fusion

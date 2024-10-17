@@ -13,6 +13,8 @@ class EHRParser:
     adm_id_col = 'adm_id'  # admission ID
     adm_time_col = 'adm_time'  # admission time
     cid_col = 'cid'  # code ID
+    note_col = 'note'
+    note_category_col = 'category'
 
     def __init__(self, path: str):
         self.path = path  # path to raw data folder
@@ -28,6 +30,9 @@ class EHRParser:
         raise NotImplementedError
 
     def set_admission(self):
+        raise NotImplementedError
+
+    def set_notes(self):
         raise NotImplementedError
 
     def _after_read_admission(self, admissions, cols) -> pd.DataFrame:
@@ -52,7 +57,8 @@ class EHRParser:
     def parse(self, sample_num=None, seed=6669):
         self.parse_admission()
         self.parse_diagnoses()
-        # self.parse_notes()
+        self.parse_notes()
+
         self.calibrate_patient_by_admission()
         self.calibrate_admission_by_patient()
         # self.calibrate_patient_by_notes()
@@ -95,6 +101,38 @@ class EHRParser:
         """
         print(termcolor.colored("Parsing diagnosis csv file ...", 'green'))
         self.admission_codes = self._parse_concept('d')  # dict, key by admission ID, value by list of disease codes
+
+    def parse_notes(self, use_summary=False):
+        """
+        Function to parse notes from csv file, add it as an attribute of admission in patient_admission
+        :return: patient_admission
+        """
+        print(termcolor.colored("Parsing notes csv file ...", 'green'))
+        filename, cols, converters = self.set_notes()
+        notes = pd.read_csv(os.path.join(self.path, filename), usecols=list(cols.values()), converters=converters)
+        pbar = tqdm(self.patient_admission.items(), total=len(self.patient_admission), desc="Parsing notes")
+        count_found = 0
+        count_not_found = 0
+        for pid, admissions in pbar:
+            # select from notes
+            for admission in admissions:
+                adm_id = admission[self.adm_id_col]
+                if use_summary:
+                    selected_notes = notes[(notes[cols[self.pid_col]] == pid) & (notes[cols[self.adm_id_col]] == adm_id)
+                                           & (notes[cols[self.note_category_col]] == 'Discharge summary')][
+                        cols[self.note_col]]
+                else:
+                    selected_notes = notes[(notes[cols[self.pid_col]] == pid) & (notes[cols[self.adm_id_col]] == adm_id)
+                                           & (notes[cols[self.note_category_col]] != 'Discharge summary')][
+                        cols[self.note_col]]
+                text_note = '. '.join(selected_notes)
+                if len(text_note) > 0:
+                    count_found += 1
+                else:
+                    count_not_found += 1
+                admission[self.note_col] = text_note
+                pbar.set_postfix({'found': count_found, 'not found': count_not_found})
+        return self.patient_admission
 
     def _parse_concept(self, concept_type):
         """
@@ -192,6 +230,18 @@ class Mimic3Parser(EHRParser):
             'SUBJECT_ID': int,
             'HADM_ID': int,
             'ICD9_CODE': Mimic3Parser.to_standard_icd9
+        }
+        return filename, cols, converters
+
+    def set_notes(self):
+        filename = 'NOTEEVENTS.csv.gz'
+        cols = {self.pid_col: 'SUBJECT_ID', self.adm_id_col: 'HADM_ID', self.note_col: 'TEXT',
+                self.note_category_col: 'CATEGORY'}
+        converters = {
+            'SUBJECT_ID': int,
+            'HADM_ID': lambda x: int(x) if x != '' else -1,
+            'TEXT': str,
+            'CATEGORY': str
         }
         return filename, cols, converters
 

@@ -1,3 +1,4 @@
+import json
 import os
 import os
 import pickle
@@ -81,14 +82,13 @@ code_adj, sim_matrix = generate_code_code_adjacent(pids=train_pids,
                                        admission_codes_encoded=admission_codes_encoded,
                                        code_num=code_num,
                                        threshold=conf['threshold'], return_sim = True)
-print(sim_matrix)
 common_args = [patient_admission, admission_codes_encoded, max_admission_num, code_num]
 print(termcolor.colored('building train codes features and labels ...', 'blue'))
-train_code_x, train_codes_y, train_visit_lens = build_code_xy(train_pids, *common_args)
+train_code_x, train_codes_y, train_visit_lens, train_notes = build_code_xy(train_pids, *common_args)
 print(termcolor.colored('building valid codes features and labels ...', 'blue'))
-valid_code_x, valid_codes_y, valid_visit_lens = build_code_xy(valid_pids, *common_args)
+valid_code_x, valid_codes_y, valid_visit_lens, valid_notes = build_code_xy(valid_pids, *common_args)
 print(termcolor.colored('building test codes features and labels ...', 'blue'))
-test_code_x, test_codes_y, test_visit_lens = build_code_xy(test_pids, *common_args)
+test_code_x, test_codes_y, test_visit_lens, test_notes = build_code_xy(test_pids, *common_args)
 
 print(termcolor.colored('generating train neighbors ...', 'blue'))
 train_neighbors = generate_neighbors(train_code_x, train_visit_lens, code_adj)
@@ -139,16 +139,14 @@ if not os.path.exists(train_path):
     os.makedirs(test_path)
 
 print(termcolor.colored('saving training data', 'green'))
-save_data(train_path, train_code_x, train_visit_lens, train_codes_y, train_hf_y, train_divided, train_neighbors)
+save_data(train_path, train_code_x, train_visit_lens, train_codes_y, train_hf_y, train_divided, train_neighbors, train_notes)
 print(termcolor.colored('saving valid data', 'green'))
-save_data(valid_path, valid_code_x, valid_visit_lens, valid_codes_y, valid_hf_y, valid_divided, valid_neighbors)
+save_data(valid_path, valid_code_x, valid_visit_lens, valid_codes_y, valid_hf_y, valid_divided, valid_neighbors, valid_notes)
 print(termcolor.colored('saving test data', 'green'))
-save_data(test_path, test_code_x, test_visit_lens, test_codes_y, test_hf_y, test_divided, test_neighbors)
+save_data(test_path, test_code_x, test_visit_lens, test_codes_y, test_hf_y, test_divided, test_neighbors, test_notes)
 
 code_adj = normalize_adj(code_adj)  # normalized by node degree
 sim_matrix = normalize_adj(sim_matrix)
-print('code_adj ', code_adj)
-print('sim_matrix', sim_matrix)
 save_sparse(os.path.join(standard_path, 'code_adj'), code_adj)
 save_sparse(os.path.join(standard_path, 'sim_adj'), sim_matrix)
 

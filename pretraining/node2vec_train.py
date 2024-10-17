@@ -2,7 +2,7 @@ import os.path
 import numpy as np
 import networkx as nx
 import sys
-sys.path.append(".")
+sys.path.append("..")
 from dataset.dataset import load_adj
 from node2vec import Node2Vec
 from argparse import ArgumentParser
@@ -18,7 +18,7 @@ def main():
     EMBEDDING_MODEL_FILENAME = 'embeddings.model'
 
     config = yaml.safe_load(open(args.config, "r"))
-    data_path = os.path.join('data', 'standard')
+    data_path = os.path.join('../data', 'standard')
     code_adj = load_adj(data_path, device='cpu')
     graph = nx.from_numpy_array(code_adj.numpy().astype(np.float64))
 
