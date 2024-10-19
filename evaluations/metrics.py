@@ -4,6 +4,7 @@ import numpy as np
 from sklearn.metrics import f1_score, roc_auc_score
 
 def f1(y_true_hot, y_pred, metrics='weighted'):
+
     result = np.zeros_like(y_true_hot)
     for i in range(len(result)):
         true_number = np.sum(y_true_hot[i] == 1) # number of true diseases
@@ -60,6 +61,7 @@ def evaluate_codes(model, dataset, loss_fn, output_size, historical=None):
     preds = torch.vstack(preds).detach().cpu().numpy()
     f1_score = f1(labels, preds)
     prec, recall = top_k_prec_recall(labels, preds, ks=[10, 20, 30, 40])
+    metrics = recall[0] + recall[1]
     if historical is not None:
         r1, r2 = calculate_occurred(historical, labels, preds, ks=[10, 20, 30, 40])
         print(
@@ -69,7 +71,7 @@ def evaluate_codes(model, dataset, loss_fn, output_size, historical=None):
     else:
         print('\r    Evaluation: loss: %.4f --- f1_score: %.4f --- top_k_recall: %.4f, %.4f, %.4f, %.4f'
               % (avg_loss, f1_score, recall[0], recall[1], recall[2], recall[3]))
-    return avg_loss, f1_score
+    return avg_loss, f1_score, metrics
 
 
 def evaluate_codes_notes(model, dataset, loss_fn, output_size, historical=None):
@@ -111,8 +113,6 @@ def evaluate_hf(model, dataset, loss_fn, output_size=1, historical=None):
         code_x, visit_lens, divided, y, neighbors = dataset[step]
         output = model(code_x, divided, neighbors, visit_lens).squeeze()
         # print(output.shape, y.shape)
-        if len(output.shape) == 0:
-            output = torch.unsqueeze(output, 0)
 
         loss = loss_fn(output, y)
         total_loss += loss.item() * output_size * len(code_x)
@@ -126,8 +126,9 @@ def evaluate_hf(model, dataset, loss_fn, output_size=1, historical=None):
     preds = np.concatenate(preds)
     auc = roc_auc_score(labels, outputs)
     f1_score_ = f1_score(labels, preds)
+    metrics = auc + f1_score_
     print('\r    Evaluation: loss: %.4f --- auc: %.4f --- f1_score: %.4f' % (avg_loss, auc, f1_score_))
-    return avg_loss, f1_score_
+    return avg_loss, f1_score_, metrics
 
 
 def evaluate_hf_notes(model, dataset, loss_fn, output_size=1, historical=None):

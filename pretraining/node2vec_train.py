@@ -17,17 +17,20 @@ def main():
     EMBEDDING_FILENAME = 'embeddings.emb'
     EMBEDDING_MODEL_FILENAME = 'embeddings.model'
 
+    # Load the adjacency matrix
     config = yaml.safe_load(open(args.config, "r"))
     data_path = os.path.join('../data', 'standard')
     code_adj = load_adj(data_path, device='cpu')
     graph = nx.from_numpy_array(code_adj.numpy().astype(np.float64))
 
+    # Define Node2Vec model
     node2vec = Node2Vec(graph, dimensions=config['code_size'], walk_length=30, num_walks=200, workers=4)
     model = node2vec.fit(window=10, min_count=1, batch_words=4)
     model.wv.save_word2vec_format(EMBEDDING_FILENAME)
     print("Node2Vec model saved to", EMBEDDING_FILENAME)
     model.save(EMBEDDING_MODEL_FILENAME)
 
+    # Convert to torch tensor and save
     saved_embeddings = []
     with open(EMBEDDING_FILENAME) as f:
         f = f.readlines()

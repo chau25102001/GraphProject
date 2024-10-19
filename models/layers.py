@@ -7,13 +7,13 @@ from models.utils import SingleHeadAttentionLayer, MultiHeadAttentionLayer
 class EmbeddingLayer(nn.Module):
     def __init__(self, code_num, code_size, graph_size, use_text_embeddings = True, text_emb_size = 1024):
         """
+        Embedding layer, including diagnosed disease embeddings, undiagnosed neighbor embeddings and unrelated disease embeddings
         :param code_num: number of diseases
         :param code_size: size of disease code embeddings
         :param graph_size: size of graph embeddings
         """
         super().__init__()
         self.code_num = code_num
-
         self.u_embeddings = nn.Parameter(data=nn.init.xavier_uniform_(torch.empty(code_num, graph_size)))
 
         self.c_embeddings = nn.Parameter(data=nn.init.xavier_uniform_(torch.empty(code_num, code_size)))
@@ -28,7 +28,12 @@ class EmbeddingLayer(nn.Module):
 
 
     def init_weights(self, ckpt_path, modules=['code_text'], freeze=False):
-
+        """
+        Function to load pretrained embeddings
+        :param ckpt_path: path to the pretrained embeddings
+        :param modules: modules to load, including 'c_embeddings', 'n_embeddings', 'code_text'
+        :param freeze: freeze the embeddings or not
+        """
         mapping = {'c_embeddings': self.c_embeddings, 'n_embeddings': self.n_embeddings, 'code_text': self.code_text}
         ckpt = torch.load(ckpt_path)
         for module in modules:
@@ -43,15 +48,16 @@ class EmbeddingLayer(nn.Module):
 
     def forward(self):
         if self.use_text_embeddings:
-            self.c_embeddings = self.c_fc(self.code_text)
-            self.n_embeddings = self.n_fc(self.code_text)
-
+            c_embeddings = self.c_fc(self.code_text)
+            n_embeddings = self.n_fc(self.code_text)
+            return c_embeddings, n_embeddings, self.u_embeddings
         return self.c_embeddings, self.n_embeddings, self.u_embeddings
 
 
 class GraphLayer(nn.Module):
     def __init__(self, adj, code_size, graph_size):
         """
+        Basic Graph aggregation layer, a node embedding is aggregated with its adjacent nodes' embeddings
         :param adj: adjacency matrix, shape code_num x code_num
         :param code_size: size of code embeddings
         :param graph_size: size of graph embeddings
@@ -62,6 +68,9 @@ class GraphLayer(nn.Module):
         self.activation = nn.LeakyReLU()
 
     def get_embedding(self, code_x, neighbor, c_embeddings, n_embeddings):
+        """
+        Aggregate the embeddings of center nodes and neighbor nodes
+        """
         center_codes = torch.unsqueeze(code_x, dim=-1)  # code_num x 1
         neighbor_codes = torch.unsqueeze(neighbor, dim=-1)  # code_num x 1
 
@@ -73,6 +82,7 @@ class GraphLayer(nn.Module):
                                                     neighbor_embeddings)  # sum of undiagnosed neighbor nodes' embeddings code_num x code_size
         nn_embeddings = neighbor_codes * torch.matmul(self.adj, neighbor_embeddings)
         nc_embeddings = neighbor_codes * torch.matmul(self.adj, center_embeddings)
+
         co_embeddings = center_embeddings + cc_embeddings + cn_embeddings
         no_embeddings = neighbor_embeddings + nn_embeddings + nc_embeddings
         return co_embeddings, no_embeddings  # code_num x code_size, code_num x code_size
@@ -85,12 +95,15 @@ class GraphLayer(nn.Module):
         :param n_embeddings: neighbor embeddings, shape code_num x code_size
         """
         co_embeddings, no_embeddings = self.get_embedding(code_x, neighbor, c_embeddings, n_embeddings)
-        co_embeddings = self.activation(self.dense(co_embeddings))
-        no_embeddings = self.activation(self.dense(no_embeddings))
+        co_embeddings = self.activation(self.dense(co_embeddings)) # projection and non-linear activation
+        no_embeddings = self.activation(self.dense(no_embeddings)) # projection and non-linear activation
         return co_embeddings, no_embeddings  # code_num x graph_size, code_num x graph_size
 
 
 class GATConv(nn.Module):
+    """
+    Graph Convolution Layer for Graph aggregation
+    """
     def __init__(self, input_size, output_size, attention_size=64, dropout=0.1):
         super().__init__()
         self.input_size = input_size
@@ -105,9 +118,11 @@ class GATConv(nn.Module):
 
     def get_attention_score(self, hs, ht, mask=None):
         """
+        Attention score calculation
         :param hs: shape n x hidden_size
         :param ht: shape m x hidden_size
         :param mask: shape n x m
+        :return scores: shape n x m
         """
         source_scores = self.a_s(hs)  # n x 1
         target_scores = self.a_t(ht)  # m x 1
@@ -122,27 +137,24 @@ class GATConv(nn.Module):
 
     def forward(self, x_s, x_t, mask=None):
         """
-        :param x_s: source node features, shape n x input_size
-        :param x_t: target node features, shape m x input_size
+        Aggregate target node embedding into source node embeddings
+        :param x_s: source node embeddings, shape n x input_size
+        :param x_t: target node e, shape m x input_size
         :param mask: mask, shape n x m
         """
         hs = self.W(x_s)
         ht = self.W(x_t)
-        # # add dropout here
-        # hs = self.drop(hs)
-        # ht = self.drop(ht)
-
         score = self.get_attention_score(hs, ht, mask)
         score = self.drop(score)
         h_prime = torch.matmul(score, ht)
         h_prime = self.out_proj(h_prime)
-        # h_prime = torch.matmul(score, x_t)
         return h_prime
 
 
 class GATGraphLayer(nn.Module):
     def __init__(self, adj, code_size, hidden_size, graph_size, attention_size=64, dropout=0.1):
         """
+        Graph Attention Layer for Graph aggregation
         :param adj: adjacency matrix, shape code_num x code_num
         :param code_size: size of code embeddings
         :param graph_size: size of graph embeddings
@@ -156,6 +168,7 @@ class GATGraphLayer(nn.Module):
 
     def create_mask(self, source_mask, target_mask):
         """
+        Create attention mask based on source nodes, target nodes connectivity and the adjacent matrix
         :param source_mask: shape code_num x 1
         :param target_mask: shape code_num x 1
         """
@@ -217,6 +230,7 @@ class GATGraphLayer(nn.Module):
 class FusionGraphLayer(nn.Module):
     def __init__(self, adj, code_size, graph_size, attention_size=64, dropout=0.1):
         """
+        Deprecated, Combined Graph GCN and Graph attention for graph aggregation
         :param adj: adjacency matrix, shape code_num x code_num
         :param code_size: size of code embeddings
         :param graph_size: size of graph embeddings
@@ -240,61 +254,26 @@ class FusionGraphLayer(nn.Module):
         gat_c_embeddings, gat_n_embeddings = self.gat.get_embeddings(code_x, neighbor, gcn_c_embeddings,
                                                                      gcn_n_embeddings)  # code_num x graph_size
 
-        # gcn_c_embeddings = self.dense(gcn_c_embeddings)
-        # gcn_n_embeddings = self.dense(gcn_n_embeddings)
         w_c = self.w_c
         w_n = self.w_n
 
         c_embeddings = gcn_c_embeddings * (1 - w_c) + gat_c_embeddings * w_c  # weighted residual
         n_embeddings = gcn_n_embeddings * (1 - w_n) + gat_n_embeddings * w_n  # weighted residual
-        # c_embeddings = torch.max(gcn_c_embeddings, gat_c_embeddings)
-        # n_embeddings = torch.max(gcn_n_embeddings, gat_n_embeddings)
         co_embeddings = self.activation(self.dense(c_embeddings))
         no_embeddings = self.activation(self.dense(n_embeddings))
         return co_embeddings, no_embeddings  # code_num x graph_size, code_num x graph_size
 
 
-class GraphLayer2(nn.Module):
-    def __init__(self, adj, code_size, graph_size, n_range=2):
-        """
-        :param adj: adjacency matrix, shape code_num x code_num
-        :param code_size: size of code embeddings
-        :param graph_size: size of graph embeddings
-        """
-        super().__init__()
-        self.adj = adj
-        self.dense = nn.ModuleList([
-            nn.Sequential(nn.Linear(code_size, code_size), nn.LayerNorm(code_size), nn.LeakyReLU())
-            for _ in range(n_range - 1)])
-        self.dense.append(nn.Sequential(nn.Linear(code_size, graph_size), nn.LayerNorm(graph_size), nn.LeakyReLU()))
-        self.n_range = n_range
-
-    def forward(self, code_x, neighbor, c_embeddings, n_embeddings):
-        """
-        :param code_x: center code, shape code_num
-        :param neighbor: neighbor code, shape code_num
-        :param c_embeddings: center embeddings, shape code_num x code_size
-        :param n_embeddings: neighbor embeddings, shape code_num x code_size
-        """
-        center_codes = torch.unsqueeze(code_x, dim=-1)  # code_num x 1
-        neighbor_codes = torch.unsqueeze(neighbor, dim=-1)  # code_num x 1
-
-        center_embeddings = center_codes * c_embeddings  # select embeddings, code_num x code_size
-        neighbor_embeddings = neighbor_codes * n_embeddings  # select embeddings, code_num x code_size
-        cc_embeddings = center_codes * torch.matmul(self.adj,
-                                                    center_embeddings)  # sum of adjacent nodes' embeddings code_num x code_size
-        cn_embeddings = center_codes * torch.matmul(self.adj,
-                                                    neighbor_embeddings)  # sum of undiagnosed neighbor nodes' embeddings code_num x code_size
-        nn_embeddings = neighbor_codes * torch.matmul(self.adj, neighbor_embeddings)
-        nc_embeddings = neighbor_codes * torch.matmul(self.adj, center_embeddings)
-
-        co_embeddings = self.activation(self.dense(center_embeddings + cc_embeddings + cn_embeddings))
-        no_embeddings = self.activation(self.dense(neighbor_embeddings + nn_embeddings + nc_embeddings))
-        return co_embeddings, no_embeddings  # code_num x graph_size, code_num x graph_size
-
-
 class TransitionLayer(nn.Module):
     def __init__(self, code_num, graph_size, hidden_size, t_attention_size, t_output_size):
+        """
+        Transition layer for temporal graph/admission embedding transition
+        :param code_num: number of diseases
+        :param graph_size: size of graph embeddings
+        :param hidden_size: size of GRU hidden states
+        :param t_attention_size: size of attention layer
+        :param t_output_size: size of output features
+        """
         super().__init__()
         self.gru = nn.GRUCell(input_size=graph_size, hidden_size=hidden_size)
         self.single_head_attention = SingleHeadAttentionLayer(graph_size, graph_size, t_output_size, t_attention_size)
@@ -305,6 +284,8 @@ class TransitionLayer(nn.Module):
 
     def forward(self, t, co_embeddings, divided, no_embeddings, unrelated_embeddings, hidden_state=None):
         """
+        Temporal transition layer, persistent diseases and emerging diseases are processed separately.
+        Persistent diseases are processed by GRU, emerging diseases are processed by attention mechanism.
         :param t: visit t
         :param co_embeddings: diagnosed disease embeddings, shape code_num x graph_size
         :param divided: divided, shape code_num x 3
@@ -348,6 +329,9 @@ class TransitionLayer(nn.Module):
 class TransitionNoteAttentionLayer(nn.Module):
     def __init__(self, code_num, graph_size, hidden_size, t_attention_size, t_output_size, n_attention_size,
                  note_size=768, n_attention_heads=8):
+        """
+        Deprecated, Transition layer with note attention mechanism at the end to aggregate admission notes into the final embedding
+        """
         super().__init__()
         self.gru = nn.GRUCell(input_size=graph_size, hidden_size=hidden_size)
         self.single_head_attention = SingleHeadAttentionLayer(graph_size, graph_size, t_output_size, t_attention_size)

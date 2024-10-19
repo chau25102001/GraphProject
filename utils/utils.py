@@ -4,6 +4,13 @@ import re
 
 class MultiStepLRScheduler:
     def __init__(self, optimizer: object, epochs: object, init_lr: object, milestones: object, lrs: object) -> object:
+        """
+        :param optimizer: optimizer object
+        :param epochs: int, number of epochs
+        :param init_lr: float, initial learning rate
+        :param milestones: list of int, list of milestones
+        :param lrs: list of float, list of learning rates
+        """
         self.optimizer = optimizer
         self.epochs = epochs
         self.init_lr = init_lr
@@ -28,6 +35,7 @@ class MultiStepLRScheduler:
 
 
 def format_time(seconds):
+    """Function to convert time to readable format"""
     if seconds <= 60:
         time_str = '%.1fs' % seconds
     elif seconds <= 3600:
@@ -37,6 +45,7 @@ def format_time(seconds):
     return time_str
 
 def process_string(s):
+    """Function to process admission note string"""
     # remove all [**(text/number)**]
     s = re.sub(r'\[\*\*.*?\*\*\]', '', s)
     # remove special characters, keep punctuation marks

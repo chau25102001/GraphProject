@@ -1,22 +1,24 @@
-seed: 6669
-dataset: mimic3
-task: m
-use_cuda: true
-code_size: 48
-graph_size: 32
-hidden_size: 256
-t_attention_size: 32
-pretrained_embeddings_path: pretraining/bge_embeddings.pt
-freeze_embeddings: true
-load_modules:
+seed: 6669 # random seed
+dataset: mimic3 # dataset to use, only mimic3 is supported
+task: m # task to run, h for heart disease prediction, m for multiple disease prediction
+use_cuda: true # use cuda or not
+code_size: 48 # size of disease embedding
+graph_size: 32 # size of graph embedding
+hidden_size: 256 # size of GRU hidden state
+t_attention_size: 32 # size of attention
+pretrained_embeddings_path: pretraining/bge_embeddings.pt   # path to pretrained embeddings
+freeze_embeddings: true # whether to freeze the embeddings after loading
+load_modules: # list of modules to load pretrained embeddings into, combination of code_text, c_embeddings, and n_embeddings
   - code_text
-graph_layer_type: gcn
-use_text_embeddings: true # do not set to false
-text_emb_size: 1024
+graph_layer_type: gcn # type of graph layer to use, gcn, gat or fusion
+dropout: 0.45 # dropout rate for classifier
+use_text_embeddings: true # whether to use text embeddings, if true, text embeddings projection module will be activated
+text_emb_size: 1024 # size of pretrained text embeddings
 
 # train config
-batch_size: 32
-epochs: 100
+batch_size: 32 # train,val, test batch size
+epochs: 200 # number of epochs to train for
 output_dir: "./runs/chet_text_embeddings" # output directory for saving checkpoints
-lr: 0.0005
-lr_scheduler: "cosine"
+lr: 0.0005 # initial learning rate
+lr_scheduler: "cosine" # learning rate scheduler, options are multi_step, cosine, and null
+optimizer: "adamw" # optimizer to use, options are adam, adamw

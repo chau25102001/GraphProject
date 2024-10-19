@@ -9,12 +9,15 @@ from tqdm import tqdm
 
 
 class EHRParser:
+    """
+    Utility class to parse raw EHR data into usable format
+    """
     pid_col = 'pid'  # patient ID
     adm_id_col = 'adm_id'  # admission ID
     adm_time_col = 'adm_time'  # admission time
     cid_col = 'cid'  # code ID
-    note_col = 'note'
-    note_category_col = 'category'
+    note_col = 'note' # note text
+    note_category_col = 'category' # note category
 
     def __init__(self, path: str):
         self.path = path  # path to raw data folder
@@ -200,6 +203,9 @@ class EHRParser:
             del self.admission_codes[adm_id]
 
     def sample_patients(self, sample_num, seed=6669):
+        """
+        Function to sample patients
+        """
         np.random.seed(seed)
         keys = list(self.patient_admission.keys())
         selected_pids = np.random.choice(keys, sample_num, False)

@@ -1,26 +1,26 @@
-seed: 6669
-dataset: mimic3
-task: m
-use_cuda: true
-code_size: 48
-graph_size: 32
-hidden_size: 256
-t_attention_size: 32
-pretrained_embeddings_path: null
-freeze_embeddings: false
-graph_layer_type: gcn
-dropout: 0.45
+seed: 6669 # random seed
+dataset: mimic3 # dataset to use, only mimic3 is supported
+task: m # task to run, h for heart disease prediction, m for multiple disease prediction
+use_cuda: true # use cuda or not
+code_size: 48 # size of disease embedding
+graph_size: 32 # size of graph embedding
+hidden_size: 256 # size of GRU hidden state
+t_attention_size: 32 # size of attention
+pretrained_embeddings_path: null # optional, path to pretrained embeddings
+freeze_embeddings: false # optional, whether to freeze the embeddings after loading
+graph_layer_type: gcn # type of graph layer to use, gcn, gat or fusion
+dropout: 0.45 # dropout rate for classifier
 
 # train config
-batch_size: 32
-epochs: 200
+batch_size: 32 # train,val, test batch size
+epochs: 200 # number of epochs to train for
 output_dir: "./runs/chet" # output directory for saving checkpoints
-lr: 0.01
-milestones:
+lr: 0.01 # initial learning rate
+milestones: # milestones for multi_step lr scheduler, only used if lr_scheduler is multi_step
   - 20
   - 20
-lrs:
+lrs: # learning rates for multi_step lr scheduler, only used if lr_scheduler is multi_step
   - 0.001
   - 0.00001
 
-lr_scheduler: "multi_step"
+lr_scheduler: "multi_step" # learning rate scheduler, options are multi_step, cosine, and null
