@@ -1,5 +1,4 @@
-import json
-import os
+
 import os
 import pickle
 from argparse import ArgumentParser
@@ -22,6 +21,7 @@ conf = {
     'threshold': 0.01
 }
 
+# define the paths
 raw_path = args.raw_path
 data_path = args.data_path  # path to folder that contains icd9.txt
 parsed_path = os.path.join(data_path, "parsed")
@@ -36,9 +36,11 @@ print(termcolor.colored('saving parsed data ...', 'green'))
 if not os.path.exists(parsed_path):
     os.makedirs(parsed_path)
 
+"""Save the patient-admission and admission-codes mapping"""
 pickle.dump(patient_admission, open(os.path.join(parsed_path, 'patient_admission.pkl'), 'wb'))
 pickle.dump(admission_codes, open(os.path.join(parsed_path, 'admission_codes.pkl'), 'wb'))
 
+"""Do some statistics"""
 patient_num = len(patient_admission)  # number of patients
 max_admission_num = max(
     [len(admissions) for admissions in patient_admission.values()])  # maximum number of admissions for a patient
@@ -56,6 +58,7 @@ print(termcolor.colored('mean admission num: %.2f' % avg_admission_num, 'blue'))
 print(termcolor.colored('max code num in an admission: %d' % max_visit_code_num, 'blue'))
 print(termcolor.colored('mean code num in an admission: %.2f' % avg_visit_code_num, 'blue'))
 
+"""Encoding the disease codes into integers"""
 admission_codes_encoded, code_map = encode_code(patient_admission, admission_codes)
 code_num = len(code_map)
 print(termcolor.colored('There are %d disease codes' % code_num, 'blue'))
@@ -65,6 +68,7 @@ pickle.dump({
     'code_levels': code_levels,
 }, open(os.path.join(parsed_path, 'code_levels.pkl'), 'wb'))
 
+"""Split the patients into train, valid and test sets. """
 train_pids, valid_pids, test_pids = split_patients(
     patient_admission=patient_admission,
     admission_codes=admission_codes,
@@ -77,11 +81,14 @@ print(termcolor.colored('train num: %d' % len(train_pids), 'blue'))
 print(termcolor.colored('valid num: %d' % len(valid_pids), 'blue'))
 print(termcolor.colored('test num: %d' % len(test_pids), 'blue'))
 
+"""Generate the adjacent matrix of disease codes based on their co-occurrence in the same admission"""
 code_adj, sim_matrix = generate_code_code_adjacent(pids=train_pids,
                                        patient_admission=patient_admission,
                                        admission_codes_encoded=admission_codes_encoded,
                                        code_num=code_num,
                                        threshold=conf['threshold'], return_sim = True)
+
+"""Generate the features and labels for training, validation and test sets"""
 common_args = [patient_admission, admission_codes_encoded, max_admission_num, code_num]
 print(termcolor.colored('building train codes features and labels ...', 'blue'))
 train_code_x, train_codes_y, train_visit_lens, train_notes = build_code_xy(train_pids, *common_args)
@@ -115,6 +122,7 @@ encoded_path = os.path.join(data_path, 'encoded')
 if not os.path.exists(encoded_path):
     os.makedirs(encoded_path)
 
+"""Save everything"""
 print(termcolor.colored('saving encoded data ...', 'green'))
 pickle.dump(patient_admission, open(os.path.join(encoded_path, 'patient_admission.pkl'), 'wb'))
 pickle.dump(admission_codes_encoded, open(os.path.join(encoded_path, 'codes_encoded.pkl'), 'wb'))

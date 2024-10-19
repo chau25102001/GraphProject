@@ -1,12 +1,13 @@
 import torch
 from torch import nn
 
-from models.layers import EmbeddingLayer, GraphLayer, TransitionLayer, TransitionNoteAttentionLayer, GraphLayer2, GATGraphLayer, FusionGraphLayer
+from models.layers import EmbeddingLayer, GraphLayer, TransitionLayer, TransitionNoteAttentionLayer, GATGraphLayer, FusionGraphLayer
 from models.utils import DotProductAttention, MultiHeadAttentionWithResidualLayer
 
 
 class Classifier(nn.Module):
     def __init__(self, input_size, output_size, dropout_rate=0.0, activation=None):
+        """Classifier layer"""
         super().__init__()
         self.linear = nn.Linear(input_size, output_size)
         self.activation = activation
@@ -24,6 +25,7 @@ class Model(nn.Module):
     def __init__(self, code_num, code_size, adj, graph_size, hidden_size, t_attention_size, t_output_size, output_size,
                  dropout_rate, activation, graph_layer_type='gat', use_text_embeddings=False, text_emb_size=1024):
         """
+        Main CHET model class
         :param code_num: number of diseases
         :param code_size: size of disease code embeddings
         :param adj: adjacency matrix
@@ -86,6 +88,7 @@ class Model(nn.Module):
 
 
 class ModelNoteAttentionV2(nn.Module):
+    """Deprecated, CHET model that uses note embeddings"""
     def __init__(self, code_num, code_size, adj, graph_size, hidden_size, t_attention_size, t_output_size, output_size,
                  dropout_rate, activation,
                  n_attention_size, note_size, n_attention_heads=8):
@@ -142,6 +145,7 @@ class ModelNoteAttentionV2(nn.Module):
 
 
 class ModelNoteAttention(nn.Module):
+    """Deprecated, CHET model that uses note embeddings"""
     def __init__(self, code_num, code_size, adj, graph_size, hidden_size, t_attention_size, t_output_size, output_size,
                  dropout_rate, activation,
                  n_attention_size, note_size, n_attention_heads=8):

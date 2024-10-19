@@ -72,8 +72,6 @@ if not load_from_pretrained:
         code = str(code)
         split_pos = 4 if code.startswith('E') else 3
         code = code[:split_pos] + '.' + code[split_pos:] if len(code) > split_pos else code
-        # print(code,code_title)
-        # print(embedding.shape)
 
         embedding_mapping[code] = {'title':code_title, 'embedding':embedding}
 
@@ -85,20 +83,13 @@ with open('./data/icd_embeddings.pickle', 'rb') as handle:
 
 with open('./data/mimic3/encoded/code_map.pkl', 'rb') as f:
     code_map = pickle.load(f)
-    # print(code_map)
 
 mimic3_embeddings = []
 for code in tqdm(code_map):
     code = str(code)
-    # try:
     embedding = embedding_mapping[code]['embedding']
     embedding = embedding[0]
-    # print(embedding.shape)
     mimic3_embeddings.append(embedding)
-    # except:
-    #     # print(code)
-    #     raw_code = code.replace('.','')
-    #     print(raw_code)
 mimic3_embeddings_final = np.stack(mimic3_embeddings,axis=0)
 print(mimic3_embeddings_final.shape)
 reducer = umap.UMAP(n_neighbors=15,min_dist=0.25,n_components=OUTPUT_SIZE)
@@ -114,7 +105,5 @@ normalized_embeddings = mimic3_embeddings/ norms
 # Step 2: Compute the cosine similarity matrix
 similarity_matrix = np.dot(normalized_embeddings, normalized_embeddings.T)
 
-# norm_sim = normalize_adj(similarity_matrix)
-# print(norm_sim)
 torch.save(torch.from_numpy(mimic3_embeddings), 'pretraining/umap_embeddings.pt')    # .npy extension is added if not given
 torch.save(torch.from_numpy(similarity_matrix), 'pretraining/similarity_matrix.pt')    # .npy extension is added if not given

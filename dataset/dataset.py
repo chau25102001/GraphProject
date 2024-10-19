@@ -9,13 +9,28 @@ from dataset.utils import load_sparse
 
 
 def load_adj(path, device=torch.device('cpu')):
+    """
+    Function to load saved adjacency matrix from file
+    :param path: str, path to the saved adjacency matrix
+    :param device: torch.device, device to load the adjacency matrix
+    """
     filename = os.path.join(path, 'code_adj.npz')
     adj = torch.from_numpy(load_sparse(filename)).to(device=device, dtype=torch.float32)
     return adj
 
 
 class EHRDataset:
+    """
+    Main dataset class for MimicIII dataset
+    """
     def __init__(self, data_path, label='m', batch_size=32, shuffle=True, device=torch.device('cpu')):
+        """
+        param data_path: str, path to the data/standard/[split] folder
+        param label: str, type of label to load, 'm' for multi-labels, 'h' for heart failure labels
+        param batch_size: int, batch size for the dataset
+        param shuffle: bool, whether to shuffle the dataset after each epoch
+        param device: torch.device, device to load the dataset
+        """
         super().__init__()
         self.path = data_path
         self.code_x, self.visit_lens, self.y, self.divided, self.neighbors = self._load(label)
@@ -26,9 +41,13 @@ class EHRDataset:
 
     @property
     def _size(self):
+        """Number of samples/patients in the dataset"""
         return self.code_x.shape[0]
 
     def _load(self, label):
+        """
+        Function to load the dataset from the saved files
+        """
         code_x = load_sparse(os.path.join(self.path, 'code_x.npz'))
         visit_lens = np.load(os.path.join(self.path, 'visit_lens.npz'))['lens']
         if label == 'm':  # load multi-labels
@@ -52,10 +71,27 @@ class EHRDataset:
         return self.y
 
     def __len__(self):
+        """
+        Function to return the number of batches in the dataset
+        """
         len_ = self._size // self.batch_size
         return len_ if self._size % self.batch_size == 0 else len_ + 1
 
     def __getitem__(self, index):
+        """
+        Function to get a batch of data from the dataset
+        return:
+        code_x: torch.Tensor, shape (batch_size, max_visit_len, code_size), binary tensor, code_x[i][j][k] = 1 if patient i has disease k at visit j
+        visit_lens: torch.Tensor, shape (batch_size,), number of visits for each patient
+        divided: torch.Tensor, shape (batch_size, max_visit_len, code_num, 3): binary tensor,
+                divided[i][j][k][0] = 1 if patient i has disease k at visit j and j-1
+                divided[i][j][k][1] = 1 if patient i has disease k at visit j and k is an undiagnosed neighbor disease in visit j - 1
+                divided[i][j][k][2] = 1 if patient i has disease k at visit j and k is an unrelated disease in visit j - 1 (neither diagnosed nor a neighbor)
+        neighbors: torch.Tensor, shape (batch_size, max_visit_len, code_size): binary tensor, neighbors[i][j][k] = 1 if disease k is a neighbor of patient i at visit j
+        y: torch.Tensor,
+            if label = m, shape (batch_size, code_size), binary tensor, y[i][j] = 1 if patient i has disease j
+            if label = h, shape (batch_size,), binary tensor, y[i] = 1 if patient i has heart failure
+        """
         device = self.device
         start = index * self.batch_size
         end = start + self.batch_size
@@ -69,6 +105,9 @@ class EHRDataset:
 
 
 class EHRDatasetWithNotes:
+    """
+    Deprecated class, an extension of EHRDataset to include patient admission note and its text embedding in each sample
+    """
     def __init__(self, data_path, label='m', batch_size=32, shuffle=True, device=torch.device('cpu'),
                  text_model_name='yikuan8/Clinical-Longformer'):
         super().__init__()

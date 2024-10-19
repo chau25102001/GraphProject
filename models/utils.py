@@ -7,6 +7,12 @@ import torch.nn.functional as F
 
 class SingleHeadAttentionLayer(nn.Module):
     def __init__(self, query_size, key_size, value_size, attention_size):
+        """
+        Single head attention layer
+        :param query_size: int, size of input query embedding
+        :param key_size: int, size of input key embedding
+        :param value_size: int, size of input value embedding
+        """
         super().__init__()
         self.attention_size = attention_size
         self.dense_q = nn.Linear(query_size, attention_size)
@@ -23,33 +29,17 @@ class SingleHeadAttentionLayer(nn.Module):
         return output
 
 
-class AttentionLayer(nn.Module):
-    def __init__(self, query_size, key_size, value_size, attention_size, output_size):
-        super().__init__()
-        self.attention_size = attention_size
-        self.dense_q = nn.Linear(query_size, attention_size, bias=False)
-        self.dense_k = nn.Linear(key_size, attention_size, bias=False)
-        self.dense_v = nn.Linear(value_size, output_size, bias=False)
-
-    def forward(self, q, k, v, attention_mask=None):
-        """
-        q: n x query_size
-        k: m x key_size
-        v: m x value_size
-        """
-        query = self.dense_q(q)
-        key = self.dense_k(k)
-        value = self.dense_v(v)
-        g = torch.div(torch.matmul(query, key.T), math.sqrt(self.attention_size))
-        if attention_mask is not None:
-            g[:, attention_mask == 0] = float('-inf')
-        score = torch.softmax(g, dim=-1)
-        output = torch.sum(torch.unsqueeze(score, dim=-1) * value, dim=-2)
-        return output
-
-
 class MultiHeadAttentionLayer(nn.Module):
     def __init__(self, query_size, key_size, value_size, attention_size, output_size, num_heads):
+        """
+        Multi head attention layer with attention mask
+        :param query_size: int, size of input query embedding
+        :param key_size: int, size of input key embedding
+        :param value_size: int, size of input value embedding
+        :param attention_size: int, size of attention hidden layer
+        :param output_size: int, size of output embedding
+        :param num_heads: int, number of heads, must be divisible by attention_size
+        """
         super().__init__()
         assert attention_size % num_heads == 0, "Attention size must be divisible by num_heads"
 
@@ -109,6 +99,9 @@ class MultiHeadAttentionLayer(nn.Module):
 
 class DotProductAttention(nn.Module):
     def __init__(self, value_size, attention_size):
+        """
+        Dot product attention layer, input embeddings are aggregated by attending to a hidden context embedding
+        """
         super().__init__()
         self.attention_size = attention_size
         self.context = nn.Parameter(data=nn.init.xavier_uniform_(torch.empty(attention_size, 1)))
@@ -116,7 +109,7 @@ class DotProductAttention(nn.Module):
 
     def forward(self, x):
         """
-        x: n x graph_size
+        x: graph embeddings, n x graph_size
         """
         t = self.dense(x)  # n x attention_size
         vu = torch.matmul(t, self.context).squeeze()  # n
@@ -127,6 +120,15 @@ class DotProductAttention(nn.Module):
 
 class MultiHeadAttentionWithResidualLayer(nn.Module):
     def __init__(self, query_size, key_size, value_size, attention_size, output_size, num_heads):
+        """
+        Multi head attention layer with residual connection
+        :param query_size: int, size of input query embedding
+        :param key_size: int, size of input key embedding
+        :param value_size: int, size of input value embedding
+        :param attention_size: int, size of attention hidden layer
+        :param output_size: int, size of output embedding
+        :param num_heads: int, number of heads, must be divisible by attention_size
+        """
         super().__init__()
         self.num_heads = num_heads
         self.attention_size = attention_size

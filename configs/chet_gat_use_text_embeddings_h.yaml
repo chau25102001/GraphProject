@@ -5,20 +5,29 @@ use_cuda: true # use cuda or not
 code_size: 48 # size of disease embedding
 graph_size: 32 # size of graph embedding
 hidden_size: 100 # size of GRU hidden state
-t_attention_size: 32 # size of attention
+t_attention_size: 32  # size of attention
 pretrained_embeddings_path: pretraining/bge_embeddings.pt # optional, path to pretrained embeddings
 freeze_embeddings: true # optional, whether to freeze the embeddings after loading
 load_modules: # list of modules to load pretrained embeddings into, combination of code_text, c_embeddings, and n_embeddings
   - code_text
-graph_layer_type: gcn # type of graph layer to use, gcn, gat or fusion
+graph_layer_type: gat # type of graph layer to use, gcn, gat or fusion
 use_text_embeddings: true # whether to use text embeddings, if true, text embeddings projection module will be activated
 text_emb_size: 1024 # size of pretrained text embeddings
-dropout: 0.0 # dropout rate for classifier
+dropout: 0.1 # dropout rate for classifier
 
 # train config
 batch_size: 32 # train,val, test batch size
-epochs: 100 # number of epochs to train for
-output_dir: "./runs/chet_text_embeddings" # output directory for saving checkpoints
+epochs: 200 # number of epochs to train for
+output_dir: "./runs/chet_gat_text_embeddings" # output directory for saving checkpoints
 lr: 0.0005 # initial learning rate
 lr_scheduler: "cosine" # learning rate scheduler, options are multi_step, cosine, and null
 optimizer: "adamw" # optimizer to use, options are adam, adamw
+
+milestones: # milestones for multi_step lr scheduler, only used if lr_scheduler is multi_step
+  - 2
+  - 3
+  - 20
+lrs: # learning rates for multi_step lr scheduler, only used if lr_scheduler is multi_step
+  - 0.001
+  - 0.0001
+  - 0.00001
