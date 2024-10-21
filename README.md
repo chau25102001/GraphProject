@@ -3,7 +3,7 @@
 
 ## Team members: 
 ### 1. Nguyen Minh Chau - 20241007M - chau.nm241007M@sis.hust.edu.vn
-### 2. Nguyen Tuan Dung - 
+### 2. Nguyen Tuan Dung - 20232198M - dung.nt232198M@sis.hust.edu.vn
 
 ## Project description:
 This project is about predicting the health events of a patient based on the diagnosis history. A diagnosis history is a temporal sequence of admissions, each comprised of several diseases.
@@ -57,4 +57,19 @@ You can visit the `configs` folder to see the available config files.
 ```
 python evaluate.py --config configs/chet_h.json
 ```
-
+7. Optionally, you can run these scripts to generate the pretrained node embeddings before you train the models:
+   - Generate node2vec embeddings: 
+    ```
+    cd pretraining/
+    python node2vec_train.py --config path-to-chet-config.yaml
+    ```
+    The generated node2vec embedding should appear in`./pretraining/embeddings_node2vec.pt`.
+   - Generate text embeddings:
+    ```
+    cd pretraining/
+    python initialize_embeddings.py
+    python convert.py
+    ```
+    The generated text embedding should appear in `./pretraining/bge_embeddings.pt`.
+    
+    Then you can replace the ``pretrained_embeddings_path`` field in the config file with the path to the generated embeddings to use them in the training process. 

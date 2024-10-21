@@ -9,7 +9,7 @@ t_attention_size: 32 # size of attention
 pretrained_embeddings_path: null # optional, path to pretrained embeddings
 freeze_embeddings: false # optional, whether to freeze the embeddings after loading
 graph_layer_type: gcn # type of graph layer to use, gcn, gat or fusion
-dropout: 0.0 # dropout rate for classifier
+dropout: 0.1 # dropout rate for classifier
 # train config
 batch_size: 32 # train,val, test batch size
 epochs: 200 # number of epochs to train for

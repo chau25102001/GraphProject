@@ -146,8 +146,9 @@ class GATConv(nn.Module):
         ht = self.W(x_t)
         score = self.get_attention_score(hs, ht, mask)
         score = self.drop(score)
-        h_prime = torch.matmul(score, ht)
-        h_prime = self.out_proj(h_prime)
+        # h_prime = torch.matmul(score, ht)
+        # h_prime = self.out_proj(h_prime)
+        h_prime = torch.matmul(score, x_t)
         return h_prime
 
 

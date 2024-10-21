@@ -14,8 +14,8 @@ from train import historical_hot, seed_everything
 def main():
     parser = ArgumentParser("Training EHR")
     parser.add_argument("--config", type=str, default="configs/chet_h.yaml")
-    parser.add_argument("--model", type=str, default="best", help="Model to use", choices=['best', 'last'])
-    parser.add_argument("--split", type=str, default="test", help="Split to use", choices=['train', 'test', 'val'])
+    parser.add_argument("--model", type=str, default="best", help="Model to use")
+    parser.add_argument("--split", type=str, default="test", help="Split to use", choices=['train', 'test', 'valid'])
     args = parser.parse_args()
 
     """Load the configurations from .yaml file"""

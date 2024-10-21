@@ -182,9 +182,9 @@ def generate_code_code_adjacent(pids, patient_admission, admission_codes_encoded
                     adj[c_j, c_i] += 1
 
     norm_adj = normalize_adj(adj)
-    a = norm_adj < threshold
+    a = norm_adj < threshold # mask infrequent edges
     b = adj.sum(axis=-1, keepdims=True) > (1 / threshold)
-    adj[np.logical_and(a, b)] = 0  # mask infrequent neighboring diseases
+    adj[np.logical_and(a, b)] = 0  # mask disease edges
     
     sim_matrix = torch.load('./pretraining/similarity_matrix.pt').detach().cpu().numpy()
     # sim_matrix = normalize_adj(sim_matrix)
